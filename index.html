@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cuckoo Filter Tracker V3</title>
+<meta name="theme-color" content="#7f161a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cuckoo Filter Tracker">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f5f7fa;color:#17202a}header{background:#7f161a;color:#fff;padding:20px 18px;border-radius:0 0 22px 22px}h1{margin:0;font-size:23px}.sub{opacity:.85;font-size:13px;margin-top:4px}main{max-width:850px;margin:auto;padding:16px 14px 90px}.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0000000b}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.filter{border:1px solid #e5e7eb;border-radius:13px;padding:12px}.name{font-weight:700;font-size:14px}.big{font-size:25px;font-weight:800;margin:5px 0}.muted{font-size:12px;color:#68737d}label{display:block;font-size:13px;font-weight:650;margin:10px 0 5px}input{width:100%;padding:11px;border:1px solid #ccd3da;border-radius:10px;font-size:15px}button{border:0;border-radius:11px;padding:11px 14px;font-weight:700;cursor:pointer}.primary{background:#7f161a;color:#fff}.secondary{background:#f9ebeb;color:#7f161a}.danger{background:#fde8e7;color:#b42318}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:center;gap:6px;padding:9px;z-index:5}
+.nav button{background:transparent;font-size:12px;color:#8e8e93;opacity:0.6;transition:all 0.2s ease;border-radius:10px;padding:6px 12px}
+.nav button.active{color:#7f161a;opacity:1;font-weight:800;background:#f9ebeb}
+.section{display:none}.section.active{display:block}.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#f9ebeb;font-size:11px;color:#7f161a}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:right}th:first-child,td:first-child{text-align:left}.empty{color:#777;text-align:center;padding:20px}.ok{color:#18794e}.negative{color:#b42318}.mini{padding:7px 9px;font-size:12px}.filter-group{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin:12px 0}.group-title{font-weight:800;color:#7f161a;font-size:13px;letter-spacing:.4px;background:#f9ebeb;padding:8px 10px;border-radius:8px;margin-bottom:6px}.group-count{float:right;font-weight:600;color:#68737d}.item-label{line-height:1.35}.code{font-size:11px;font-weight:800;color:#7f161a}.group-inputs label{border-top:1px solid #eef0f2;padding-top:8px;margin-top:8px}
+details.filter-group{padding:0;overflow:hidden}
+details.filter-group>summary{list-style:none;cursor:pointer;padding:10px}
+details.filter-group>summary::-webkit-details-marker{display:none}
+details.filter-group>summary:after{content:'＋';float:right;font-size:16px}
+details.filter-group[open]>summary:after{content:'−'}
+details.filter-group .group-content{padding:0 10px 10px}
+.user-bar{background:#f9ebeb;padding:8px 12px;border-radius:10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+#authModal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99;padding:15px}
+.auth-box{background:#fff;padding:22px;border-radius:16px;width:100%;max-width:360px}
+.auth-tabs{display:flex;gap:10px;margin-bottom:15px}
+.auth-tabs button{flex:1;background:#f0f0f0;color:#555}
+.auth-tabs button.active{background:#7f161a;color:#fff}
+@media(max-width:600px){
+  header{padding:16px 14px}
+  h1{font-size:20px}
+  main{padding:10px 10px 82px}
+  .card{padding:12px;margin:9px 0;border-radius:14px}
+  .grid{grid-template-columns:1fr}
+  .filter{padding:10px}
+  .big{font-size:22px}
+  .nav{gap:0;justify-content:space-around;padding:7px 3px}
+  .nav button{padding:6px 8px;font-size:11px}
+  table{font-size:12px}
+  th,td{padding:7px 3px}
+}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
+body{min-height:100vh;min-height:100dvh;padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:auto;}
+button,input,select,textarea{font:inherit;-webkit-appearance:none;appearance:none;}
+button{touch-action:manipulation;min-height:44px;}
+input{min-height:44px;-webkit-border-radius:10px;}
+.nav{padding-bottom:calc(9px + env(safe-area-inset-bottom));}
+@media(max-width:600px){input,button{font-size:16px;}.nav{padding-bottom:calc(7px + env(safe-area-inset-bottom));}}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head><body>
+
+<div id="authModal">
+  <div class="auth-box card">
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="switchAuthMode('login')">Login</button>
+      <button id="tabSignup" onclick="switchAuthMode('signup')">Sign Up</button>
+    </div>
+    <h3 id="authTitle" style="margin-top:0">Account Login</h3>
+    <label>ID / Username</label>
+    <input id="authUsername" placeholder="Example: imran123" autocomplete="off">
+    <label>Password</label>
+    <input id="authPassword" type="password" placeholder="Enter Password">
+    <div style="margin-top:15px">
+      <button id="authBtn" class="primary" style="width:100%" onclick="handleAuth()">Login</button>
+    </div>
+  </div>
+</div>
+
+<header><h1>📦 Cuckoo Filter Tracker V3</h1><div class="sub">ID & Password Auth Tracker</div></header><main>
+<div class="card user-bar">
+  <div><span style="font-size:12px;color:#666">Logged in as:</span> <b id="displayUsername" style="color:#7f161a">-</b></div>
+  <button class="danger mini" onclick="logout()">Logout</button>
+</div>
+
+<section id="dashboard" class="section active">
+  <div class="card">
+    <div class="row">
+      <div>
+        <b>Current Month</b>
+        <div class="muted" id="monthLabel"></div>
+      </div>
+      <input type="month" id="monthPicker" class="secondary" style="width:auto; padding:6px 10px; cursor:pointer;" onchange="changeMonth(this.value)">
+    </div>
+  </div>
+  <div id="summaryGroups"></div>
+</section>
+
+<section id="receive" class="section"><div class="card"><h3>📥 Receive Stock</h3><div class="muted">Enter stock by category/model.</div><div id="receiveInputs"></div><button class="primary" onclick="saveReceive()">Save Received Stock</button></div></section>
+<section id="usage" class="section"><div class="card"><h3>➕ Daily Usage</h3><label>Date</label><input type="date" id="usageDate"><div id="usageInputs"></div><button class="primary" onclick="saveUsage()">Save Usage</button></div><div class="card"><h3>📋 Daily Records</h3><div id="usageTable"></div></div></section>
+<section id="filters" class="section"><div class="card"><h3>⚙️ Manage Filters</h3><div class="muted">Add a new filter and select a category.</div><div class="row" style="margin-top:12px"><input id="newFilter" placeholder="Example: RO FILTER"><button class="primary" onclick="addFilter()">+ Add</button></div><div id="filterList" style="margin-top:12px"></div></div></section>
+<section id="history" class="section">
+  <div class="card">
+    <div class="row" style="margin-bottom: 12px;">
+      <div>
+        <h3>📚 Monthly History</h3>
+        <div class="muted">Select a month to view records.</div>
+      </div>
+      <select id="historyMonthPicker" class="secondary" style="width:auto; padding:6px 10px; cursor:pointer;" onchange="changeHistoryMonth(this.value)">
+      </select>
+    </div>
+    <div id="historyTable"></div>
+  </div>
+</section>
+</main>
+<div class="nav"><button id="btn-dashboard" class="active" onclick="show('dashboard')">🏠<br>Home</button><button id="btn-receive" onclick="show('receive')">📥<br>Receive</button><button id="btn-usage" onclick="show('usage')">➕<br>Usage</button><button id="btn-filters" onclick="show('filters')">⚙️<br>Filters</button><button id="btn-history" onclick="show('history')">📚<br>History</button></div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+// Firebase Config Projek Anda
+const firebaseConfig = {
+  apiKey: "AIzaSyDtncVnvD_L8hulyLroP6_q_X0_t78ZfY0",
+  authDomain: "cuckoo-tracker-dbbd0.firebaseapp.com",
+  databaseURL: "https://cuckoo-tracker-dbbd0-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "cuckoo-tracker-dbbd0",
+  storageBucket: "cuckoo-tracker-dbbd0.firebasestorage.app",
+  messagingSenderId: "725278259859",
+  appId: "1:725278259859:web:634cec72becbd4d428ab66",
+  measurementId: "G-W6G07CDY6Z"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const F=[
+['8 INCH BASIC','FT-1001','Sediment Filter 8 Inch'],['8 INCH BASIC','FT-1012','Pre Carbon V2.0 8 Inch'],['8 INCH BASIC','FT-1013','Natural Filter V2.0 8 Inch'],['8 INCH BASIC','FT-1004','Nano Positive 8 Inch'],
+['8 INCH TWIST','FT-1005','Sediment 8 Inch (Twist Head)'],['8 INCH TWIST','FT-1006','Natural Filter 8 Inch (Twist Head)'],['8 INCH TWIST','FT-1007','Nano Positive 8 Inch (Twist Head)'],
+['8 INCH MARVEL','FT-1015','Sediment Filter 8 Inch (Marvel)'],['8 INCH MARVEL','FT-1018','Natural Plus Filter 8 Inch'],['8 INCH MARVEL','FT-1019','Nano Positive Plus Filter 8 Inch'],
+['4 INCH PRINCE','FT-1020','Sedi Carbon Composite Filter 4 Inch'],['4 INCH PRINCE','FT-1018','Natural Plus Filter'],['4 INCH PRINCE','FT-1017','Nano Positive Filter 4 Inch'],
+['8 INCH WARRIOR','FT-1021','Sediment Filter 8 Inch (Easy Type)'],['8 INCH WARRIOR','FT-1022','Pre Carbon V2.0 8 Inch (Easy Type)'],['8 INCH WARRIOR','FT-1023','Natural Filter V2.0 8 Inch (Easy Type)'],['8 INCH WARRIOR','FT-1024','Nano Positive 8 Inch (Easy Type)'],
+['8 INCH GRANDE','FT-1029','Nano Positive Plus Filter V3.0 8 Inch (Easy Type)'],['8 INCH GRANDE','FT-1030','Carbon Composite 8 Inch (Easy Type)'],
+['11 INCH','FT-2001','Sediment Filter 11 Inch'],['11 INCH','FT-2022','Pre Carbon Block 2.0 Filter 11 Inch'],['11 INCH','FT-2003','Natural 2.0 Filter 11 Inch'],['11 INCH','FT-2004','Nano Filter 11 Inch'],['11 INCH','FT-2024','Nano Positive 3.0C Filter 11 Inch'],
+['U MODEL','CAC-UAP60','Allergent Filter'],['U MODEL','FTAP-UAP60','Deodorization Filter'],
+['AIR PURIFIER FILTER (B MODEL)','CAC-BAP60','Allergen Filter'],['AIR PURIFIER FILTER (B MODEL)','CAC-BDE60','Deodorization Filter'],['AIR PURIFIER FILTER (B MODEL)','CAC-BDG60','Harmful Gas Removal Filter'],['AIR PURIFIER FILTER (B MODEL)','FTAP-BHP14','True HEPA H14 Filter'],
+['AIR PURIFIER FILTER (C MODEL)','CAC-CDE60','Deodorization Filter'],['AIR PURIFIER FILTER (C MODEL)','CAC-CP60','Harmful Gas Removal Filter'],['AIR PURIFIER FILTER (C MODEL)','FTAP-CHP14','True HEPA H14 Filter'],['AIR PURIFIER FILTER (C MODEL)','FTAP-CHUMI','Humification Filter'],
+['AIR PURIFIER FILTER (D MODEL)','CAC-DAP60','Allergen Filter'],['AIR PURIFIER FILTER (D MODEL)','CAC-DU60','Deodorization Filter'],['AIR PURIFIER FILTER (K MODEL)','CAC-KAP60','Allergen Filter'],['AIR PURIFIER FILTER (K MODEL)','CAC-KUD60','Deodorization Filter'],['AIR PURIFIER FILTER (R MODEL)','CAC-RDE60','Deodorization Filter'],['AIR PURIFIER FILTER (R MODEL)','CAC-RHP13','True HEPA H13 Filter'],
+['OTHER','','Hygiene Kit'],['OTHER','','Ball Valve'],['OTHER','','Fitting - L'],['OTHER','','Fitting - I'],['OTHER','','Fitting - T']
+].map(([category,code,name],id)=>({category,code,name,id:`${category}|${code}|${name}`}));
+
+let authMode = 'login';
+let currentUser = localStorage.getItem('cuckoo_auth_user');
+let dbRef;
+let db = { filters: F, months: {} };
+let current = new Date().toISOString().slice(0,7);
+let historySelectedMonth = current; // Pembolehubah untuk simpan bulan history yang sedang dipilih
+
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const key=s=>String(s).replace(/[^a-zA-Z0-9]+/g,'_');
+const label=f=>f.code?`${f.code} — ${f.name}`:f.name;
+
+function switchAuthMode(mode){
+  authMode = mode;
+  document.getElementById('tabLogin').className = mode==='login'?'active':'';
+  document.getElementById('tabSignup').className = mode==='signup'?'active':'';
+  document.getElementById('authTitle').textContent = mode==='login'?'Account Login':'Register New Account';
+  document.getElementById('authBtn').textContent = mode==='login'?'Login':'Register Now';
+}
+
+function handleAuth(){
+  let u = document.getElementById('authUsername').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  let p = document.getElementById('authPassword').value;
+  if(!u || !p) return alert('Please enter Username and Password.');
+
+  let btn = document.getElementById('authBtn');
+  btn.textContent = 'Please wait...';
+  btn.disabled = true;
+
+  let userRef = firebase.database().ref('accounts/' + u);
+  userRef.once('value').then(snap => {
+    let exist = snap.val();
+    if(authMode === 'signup'){
+      if(exist) {
+        btn.textContent = 'Register Now';
+        btn.disabled = false;
+        return alert('Username already exists. Please choose a different Username.');
+      }
+      userRef.set({ password: p }).then(() => {
+        alert('Account registered successfully!');
+        loginSuccess(u);
+      }).catch(err => {
+        alert('Registration error: ' + err.message);
+        btn.textContent = 'Register Now';
+        btn.disabled = false;
+      });
+    } else {
+      if(!exist || exist.password !== p) {
+        btn.textContent = 'Login';
+        btn.disabled = false;
+        return alert('Incorrect Username or Password!');
+      }
+      loginSuccess(u);
+    }
+  }).catch(err => {
+    alert('System error: Please check your internet connection or Firebase config.');
+    btn.textContent = authMode === 'signup' ? 'Register Now' : 'Login';
+    btn.disabled = false;
+  });
+}
+
+function loginSuccess(u){
+  currentUser = u;
+  localStorage.setItem('cuckoo_auth_user', u);
+  document.getElementById('authModal').style.display = 'none';
+  document.getElementById('displayUsername').textContent = u;
+  initUserDB();
+}
+
+function logout(){
+  if(confirm('Log out from this account?')){
+    localStorage.removeItem('cuckoo_auth_user');
+    location.reload();
+  }
+}
+
+function initUserDB(){
+  if(dbRef) dbRef.off();
+  dbRef = firebase.database().ref('users_data/' + currentUser);
+  dbRef.on('value', (snapshot) => {
+    const val = snapshot.val();
+    if (val) {
+      db = val;
+      if (!db.filters) db.filters = F;
+      if (!db.months) db.months = {};
+    } else {
+      db = { filters: F, months: {} };
+      save();
+    }
+    render();
+  });
+}
+
+function groups(){return db.filters.reduce((a,f)=>((a[f.category]??=[]).push(f),a),{})}
+function ensure(m=current){if(!db.months)db.months={};if(!db.months[m])db.months[m]={receive:{},usage:[]};if(!db.months[m].receive)db.months[m].receive={};db.filters.forEach(f=>db.months[m].receive[f.id]??=0)}
+function save(){ if(dbRef) dbRef.set(db); }
+function used(m,id){return(db.months[m]?.usage||[]).reduce((s,x)=>s+(+x[id]||0),0)}
+function monthName(m){return new Date(m+'-01').toLocaleDateString('en-MY',{month:'long',year:'numeric'})}
+function groupHTML(renderer){return Object.entries(groups()).map(([c,items],i)=>`<details class="filter-group" ${i===0?'open':''}><summary><span class="group-title">${esc(c)} <span class="group-count">${items.length} items</span></span></summary><div class="group-content">${renderer(items,c)}</div></details>`).join('')}
+
+function render(){
+  ensure();
+  monthLabel.textContent=monthName(current);
+  document.getElementById('monthPicker').value = current;
+  summaryGroups.innerHTML=groupHTML(items=>`<div class="grid">${items.map(f=>{let r=db.months[current].receive[f.id]||0,u=used(current,f.id),b=r-u;return`<div class="filter"><div class="code">${esc(f.code||'OTHER')}</div><div class="name">${esc(f.name)}</div><div class="big ${b<0?'negative':'ok'}">${b}</div><div class="muted">Received ${r} · Used ${u} · Return</div></div>`}).join('')}</div>`);
+  receiveInputs.innerHTML=groupHTML(items=>`<div class="group-inputs">${items.map(f=>`<label>${esc(label(f))}</label><input id="r_${key(f.id)}" type="number" min="0" value="${db.months[current].receive[f.id]||0}">`).join('')}</div>`);
+  usageInputs.innerHTML=groupHTML(items=>`<div class="group-inputs">${items.map(f=>`<label>${esc(label(f))}</label><input id="u_${key(f.id)}" type="number" min="0" value="0">`).join('')}</div>`);
+  usageDate.value||=new Date().toISOString().slice(0,10);
+  renderUsage();renderHistory();renderFilters();
+}
+
+function changeMonth(val){
+  if(!val) return;
+  current = val;
+  ensure();
+  save();
+  render();
+}
+
+function saveReceive(){db.filters.forEach(f=>db.months[current].receive[f.id]=+document.getElementById('r_'+key(f.id)).value||0);save();alert('Received stock saved to Cloud.')}
+function saveUsage(){let date=usageDate.value;if(!date)return alert('Select a date.');let x={date},total=0;db.filters.forEach(f=>{x[f.id]=+document.getElementById('u_'+key(f.id)).value||0;total+=x[f.id]});if(!total)return alert('Please enter at least one filter.');if(!db.months[current].usage)db.months[current].usage=[];db.months[current].usage.push(x);save();alert('Daily usage saved to Cloud.')}
+function renderUsage(){let a=db.months[current].usage||[];usageTable.innerHTML=a.length?`<table><tr><th>Date</th><th>Total</th><th></th></tr>${a.map((x,i)=>`<tr><td>${x.date}</td><td>${db.filters.reduce((s,f)=>s+(+x[f.id]||0),0)}</td><td><button class="danger mini" onclick="delUsage(${i})">×</button></td></tr>`).join('')}</table>`:'<div class="empty">No records yet.</div>'}
+function delUsage(i){if(confirm('Delete this record?')){db.months[current].usage.splice(i,1);save();}}
+function addFilter(){let n=newFilter.value.trim();if(!n)return alert('Enter filter name.');let c=prompt('Category for this filter:','CUSTOM');if(!c)return;let code=prompt('Filter code (optional):','')||'';let id=`${c.trim().toUpperCase()}|${code.trim().toUpperCase()}|${n.toUpperCase()}`;if(db.filters.some(f=>f.id===id))return alert('Filter already exists.');db.filters.push({category:c.trim().toUpperCase(),code:code.trim().toUpperCase(),name:n.toUpperCase(),id});ensure();save();newFilter.value='';}
+function renderFilters(){filterList.innerHTML=groupHTML(items=>items.map(f=>`<div class="row" style="margin:8px 0"><div class="item-label"><span class="code">${esc(f.code||'OTHER')}</span><br><b>${esc(f.name)}</b></div><button class="danger mini" onclick="removeFilter('${encodeURIComponent(f.id)}')">Delete</button></div>`).join(''))}
+function removeFilter(eid){let id=decodeURIComponent(eid),f=db.filters.find(x=>x.id!==id);if(!f)return;if(confirm(`Delete ${label(f)}?`)){db.filters=db.filters.filter(x=>x.id!==id);save();}}
+
+function renderHistory(){
+  let ms = Object.keys(db.months||{}).sort().reverse();
+  let selectEl = document.getElementById('historyMonthPicker');
+  
+  if(ms.length === 0){
+    selectEl.innerHTML = `<option value="">No data</option>`;
+    historyTable.innerHTML = '<div class="empty">No history available yet.</div>';
+    return;
+  }
+  
+  if(!ms.includes(historySelectedMonth)){
+    historySelectedMonth = ms[0];
+  }
+  
+  selectEl.innerHTML = ms.map(m => `<option value="${m}" ${m===historySelectedMonth?'selected':''}>${monthName(m)}</option>`).join('');
+  
+  let m = historySelectedMonth;
+  ensure(m);
+  let totalUsed = db.filters.reduce((s,f)=>s+used(m,f.id),0);
+  let totalReceived = db.filters.reduce((s,f)=>s+(db.months[m].receive[f.id]||0),0);
+  
+  historyTable.innerHTML = `
+    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: #f9ebeb; padding: 10px; border-radius: 10px;">
+      <span class="pill" style="font-size: 13px; font-weight: bold;">${monthName(m)}</span>
+      <div style="font-size: 12px; color: #68737d;">
+        <b>Used:</b> ${totalUsed} &nbsp;&nbsp; <b>Received:</b> ${totalReceived}
+      </div>
+    </div>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align: left;">Filter</th>
+            <th>Received</th>
+            <th>Used</th>
+            <th>Return</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${renderHistoryRows(m)}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function changeHistoryMonth(val){
+  if(!val) return;
+  historySelectedMonth = val;
+  renderHistory();
+}
+
+function renderHistoryRows(m){
+  let grouped = groups();
+  let html = '';
+  
+  for(let [category, items] of Object.entries(grouped)){
+    html += `
+      <tr style="background-color: #f9ebeb;">
+        <td colspan="4" style="text-align: left; font-weight: 800; color: #7f161a; padding: 10px 5px;">
+          ${esc(category)}
+        </td>
+      </tr>
+    `;
+    
+    items.forEach(f => {
+      let r = db.months[m].receive[f.id] || 0;
+      let u = used(m, f.id);
+      let ret = r - u;
+      html += `
+        <tr>
+          <td style="text-align: left; padding-left: 12px;">${esc(label(f))}</td>
+          <td>${r}</td>
+          <td>${u}</td>
+          <td>${ret}</td>
+        </tr>
+      `;
+    });
+  }
+  return html;
+}
+
+function show(id){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(btn => btn.classList.remove('active'));const activeBtn = document.getElementById('btn-' + id);if (activeBtn) activeBtn.classList.add('active');render();}
+
+if(currentUser){
+  loginSuccess(currentUser);
+} else {
+  document.getElementById('authModal').style.display = 'flex';
+}
+</script>
+</body></html>
