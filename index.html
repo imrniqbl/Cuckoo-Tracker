@@ -209,7 +209,7 @@ let currentUser = localStorage.getItem('cuckoo_auth_user');
 let dbRef;
 let db = { filters: F, months: {} };
 let current = new Date().toISOString().slice(0,7);
-let historySelectedMonth = current; // Pembolehubah untuk simpan bulan history yang sedang dipilih
+let historySelectedMonth = current;
 
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key=s=>String(s).replace(/[^a-zA-Z0-9]+/g,'_');
@@ -401,7 +401,7 @@ function renderHistoryRows(m){
       let ret = r - u;
       html += `
         <tr>
-          <td style="text-align: left; padding-left: 12px;">${esc(label(f))}</td>
+          <td style="text-align: left; padding-left: 12px;">${esc(f.name)}</td>
           <td>${r}</td>
           <td>${u}</td>
           <td>${ret}</td>
